@@ -12,7 +12,7 @@ resource "aws_internet_gateway" "main" {
   tags   = { Name = "${var.project_name}-igw" }
 }
 
-# Public Subnets (presentation tier + NAT Gateways)
+# Public Subnets (presentation tier + ALB)
 resource "aws_subnet" "public_1" {
   vpc_id                  = aws_vpc.main.id
   cidr_block              = var.public_subnet_1_cidr
@@ -29,7 +29,8 @@ resource "aws_subnet" "public_2" {
   tags = { Name = "${var.project_name}-public-1b" }
 }
 
-# Private App Subnets (application tier)
+# Private App Subnets (application tier EC2 - no NAT, 
+# instances will be in public subnet for this project)
 resource "aws_subnet" "private_app_1" {
   vpc_id            = aws_vpc.main.id
   cidr_block        = var.private_app_subnet_1_cidr
@@ -44,7 +45,7 @@ resource "aws_subnet" "private_app_2" {
   tags = { Name = "${var.project_name}-private-app-1b" }
 }
 
-# Private DB Subnets (data tier)
+# Private DB Subnets (data tier - RDS always stays private)
 resource "aws_subnet" "private_db_1" {
   vpc_id            = aws_vpc.main.id
   cidr_block        = var.private_db_subnet_1_cidr
@@ -59,33 +60,7 @@ resource "aws_subnet" "private_db_2" {
   tags = { Name = "${var.project_name}-private-db-1b" }
 }
 
-# Elastic IPs for NAT Gateways
-resource "aws_eip" "nat_1" {
-  domain = "vpc"
-  tags   = { Name = "${var.project_name}-eip-1a" }
-}
-
-resource "aws_eip" "nat_2" {
-  domain = "vpc"
-  tags   = { Name = "${var.project_name}-eip-1b" }
-}
-
-# NAT Gateways (one per AZ in public subnets)
-resource "aws_nat_gateway" "nat_1" {
-  allocation_id = aws_eip.nat_1.id
-  subnet_id     = aws_subnet.public_1.id
-  tags          = { Name = "${var.project_name}-nat-1a" }
-  depends_on    = [aws_internet_gateway.main]
-}
-
-resource "aws_nat_gateway" "nat_2" {
-  allocation_id = aws_eip.nat_2.id
-  subnet_id     = aws_subnet.public_2.id
-  tags          = { Name = "${var.project_name}-nat-1b" }
-  depends_on    = [aws_internet_gateway.main]
-}
-
-# Public Route Table
+# Public Route Table (routes to IGW for public subnets)
 resource "aws_route_table" "public" {
   vpc_id = aws_vpc.main.id
   route {
@@ -95,6 +70,7 @@ resource "aws_route_table" "public" {
   tags = { Name = "${var.project_name}-rt-public" }
 }
 
+# Associate public route table with both public subnets
 resource "aws_route_table_association" "public_1" {
   subnet_id      = aws_subnet.public_1.id
   route_table_id = aws_route_table.public.id
@@ -105,41 +81,28 @@ resource "aws_route_table_association" "public_2" {
   route_table_id = aws_route_table.public.id
 }
 
-# Private Route Tables (one per AZ pointing to local NAT)
-resource "aws_route_table" "private_1" {
+# Private Route Table (no route to internet - DB subnets only)
+resource "aws_route_table" "private" {
   vpc_id = aws_vpc.main.id
-  route {
-    cidr_block     = "0.0.0.0/0"
-    nat_gateway_id = aws_nat_gateway.nat_1.id
-  }
-  tags = { Name = "${var.project_name}-rt-private-1a" }
-}
-
-resource "aws_route_table" "private_2" {
-  vpc_id = aws_vpc.main.id
-  route {
-    cidr_block     = "0.0.0.0/0"
-    nat_gateway_id = aws_nat_gateway.nat_2.id
-  }
-  tags = { Name = "${var.project_name}-rt-private-1b" }
-}
-
-resource "aws_route_table_association" "private_app_1" {
-  subnet_id      = aws_subnet.private_app_1.id
-  route_table_id = aws_route_table.private_1.id
-}
-
-resource "aws_route_table_association" "private_app_2" {
-  subnet_id      = aws_subnet.private_app_2.id
-  route_table_id = aws_route_table.private_2.id
+  tags   = { Name = "${var.project_name}-rt-private" }
 }
 
 resource "aws_route_table_association" "private_db_1" {
   subnet_id      = aws_subnet.private_db_1.id
-  route_table_id = aws_route_table.private_1.id
+  route_table_id = aws_route_table.private.id
 }
 
 resource "aws_route_table_association" "private_db_2" {
   subnet_id      = aws_subnet.private_db_2.id
-  route_table_id = aws_route_table.private_2.id
+  route_table_id = aws_route_table.private.id
+}
+
+resource "aws_route_table_association" "private_app_1" {
+  subnet_id      = aws_subnet.private_app_1.id
+  route_table_id = aws_route_table.private.id
+}
+
+resource "aws_route_table_association" "private_app_2" {
+  subnet_id      = aws_subnet.private_app_2.id
+  route_table_id = aws_route_table.private.id
 }
