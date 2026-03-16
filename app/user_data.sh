@@ -17,7 +17,16 @@ pip3 install flask mysql-connector-python requests
 mkdir -p /home/ec2-user/app
 
 # Write environment variables
-cat > /etc/environment << EOF
+# Export variables for immediate use during script execution
+export DB_HOST=${db_host}
+export DB_USER=${db_user}
+export DB_PASSWORD=${db_password}
+export DB_NAME=${db_name}
+export OPENWEATHER_API_KEY=${api_key}
+
+# Write dedicated environment file for systemd
+# This is what Flask reads every time it starts
+cat > /etc/zamweather.env << EOF
 DB_HOST=${db_host}
 DB_USER=${db_user}
 DB_PASSWORD=${db_password}
@@ -25,12 +34,8 @@ DB_NAME=${db_name}
 OPENWEATHER_API_KEY=${api_key}
 EOF
 
-# Export variables for immediate use
-export DB_HOST=${db_host}
-export DB_USER=${db_user}
-export DB_PASSWORD=${db_password}
-export DB_NAME=${db_name}
-export OPENWEATHER_API_KEY=${api_key}
+# Secure the environment file
+chmod 600 /etc/zamweather.env
 
 # Write the Flask app directly inline
 cat > /home/ec2-user/app/app.py << 'PYEOF'
@@ -192,15 +197,19 @@ chown -R ec2-user:ec2-user /home/ec2-user/app
 cat > /etc/systemd/system/zamweather.service << EOF
 [Unit]
 Description=ZamWeather Flask App
-After=network.target
+After=network-online.target
+Wants=network-online.target
 
 [Service]
 User=ec2-user
 WorkingDirectory=/home/ec2-user/app
-EnvironmentFile=/etc/environment
+EnvironmentFile=/etc/zamweather.env
+ExecStartPre=/bin/sleep 10
 ExecStart=/usr/bin/python3 /home/ec2-user/app/app.py
-Restart=always
-RestartSec=5
+Restart=on-failure
+RestartSec=10
+StartLimitInterval=60
+StartLimitBurst=3
 
 [Install]
 WantedBy=multi-user.target
