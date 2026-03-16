@@ -45,20 +45,26 @@ resource "aws_autoscaling_group" "main" {
   name                = "${var.project_name}-asg"
   desired_capacity    = 1
   min_size            = 1
-  max_size            = 2
+  max_size            = 1
   vpc_zone_identifier = [var.public_subnet_1_id, var.public_subnet_2_id]
 
-  # Connect ASG to ALB target group
   target_group_arns = [var.target_group_arn]
 
-  # Use ELB health checks so ASG replaces
-  # instances the ALB marks as unhealthy
   health_check_type         = "ELB"
-  health_check_grace_period = 120
+  health_check_grace_period = 300
 
   launch_template {
     id      = aws_launch_template.main.id
     version = "$Latest"
+  }
+
+  # Terminate old instance BEFORE launching new one
+  # This prevents vCPU overlap on limited accounts
+  instance_refresh {
+    strategy = "Rolling"
+    preferences {
+      min_healthy_percentage = 0
+    }
   }
 
   tag {
