@@ -11,7 +11,7 @@ yum update -y
 yum install -y python3 python3-pip
 
 # Install Flask dependencies
-pip3 install flask mysql-connector-python requests
+pip3 install flask mysql-connector-python requests urllib3==1.26.15
 
 # Create app directory
 mkdir -p /home/ec2-user/app
