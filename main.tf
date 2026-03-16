@@ -54,3 +54,13 @@ module "ec2" {
   db_name             = "weatherapp"
   api_key             = var.openweather_api_key
 }
+# Fetch the running instance launched by the ASG
+data "aws_instances" "app_servers" {
+  instance_tags = {
+    Name = "${var.project_name}-app-server"
+  }
+
+  instance_state_names = ["running"]
+
+  depends_on = [module.ec2]
+}
