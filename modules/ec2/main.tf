@@ -16,6 +16,7 @@ resource "aws_launch_template" "main" {
   name_prefix   = "${var.project_name}-lt-"
   image_id      = data.aws_ami.amazon_linux_2.id
   instance_type = "t2.micro"
+  key_name      = "zamweather-key"
 
   network_interfaces {
     associate_public_ip_address = true

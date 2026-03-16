@@ -33,7 +33,7 @@ resource "aws_security_group" "alb" {
 }
 
 # Application/Flask EC2 Security Group
-# Only accepts inbound traffic from the ALB - nothing else
+#  accepts inbound traffic from the ALB and ssh for debugging 
 resource "aws_security_group" "app" {
   name        = "${var.project_name}-sg-app"
   description = "Security group for Flask application EC2 instances"
@@ -53,6 +53,14 @@ resource "aws_security_group" "app" {
     to_port         = 5000
     protocol        = "tcp"
     security_groups = [aws_security_group.alb.id]
+  }
+
+ ingress {
+    description = "SSH for debugging"
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
   }
 
   egress {
