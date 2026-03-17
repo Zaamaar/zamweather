@@ -258,7 +258,6 @@
     <button onclick="searchWeather()">Search</button>
   </div>
 
-  <!-- Weather result card -->
   <div class="weather-card" id="weatherCard">
     <div class="city-name" id="cityName"></div>
     <div class="condition" id="conditionText"></div>
@@ -283,7 +282,6 @@
     </div>
   </div>
 
-  <!-- Error card -->
   <div class="error-card" id="errorCard">
     <div id="errorMessage"></div>
     <button class="retry-btn" id="retryBtn" onclick="searchWeather()" style="display:none">
@@ -291,7 +289,6 @@
     </button>
   </div>
 
-  <!-- Search history -->
   <div class="history-section">
     <div class="history-title">Recent Searches</div>
     <div class="history-list" id="historyList">
@@ -300,10 +297,13 @@
   </div>
 
   <div class="footer">
-    Built on AWS — VPC · EC2 · RDS · ALB · S3 · CloudFront · Terraform
+    Built on AWS — VPC · EC2 · RDS · ALB · S3 · Terraform
   </div>
 
   <script>
+    // ALB URL - Flask API endpoint
+    const API_URL = 'http://zamweather-alb-212275771.us-east-1.elb.amazonaws.com';
+
     // On page load fetch search history
     window.onload = function() {
       loadHistory();
@@ -313,16 +313,18 @@
       const city = document.getElementById('cityInput').value.trim();
       if (!city) return;
 
-      // Hide previous results
       hideWeatherCard();
       hideErrorCard();
 
       try {
-        const response = await fetch(`/api/weather?city=${encodeURIComponent(city)}`);
+        const response = await fetch(`${API_URL}/weather?city=${encodeURIComponent(city)}`);
         const data = await response.json();
 
         if (!response.ok) {
-          showError(data.message || 'Something went wrong.', data.error === 'timeout' || data.error === 'connection');
+          showError(
+            data.message || 'Something went wrong.',
+            data.error === 'timeout' || data.error === 'connection'
+          );
           return;
         }
 
@@ -342,7 +344,6 @@
       document.getElementById('humidity').textContent = `${data.humidity}%`;
       document.getElementById('windSpeed').textContent = `${data.wind_speed} m/s`;
       document.getElementById('country').textContent = data.country;
-
       document.getElementById('weatherCard').classList.add('visible');
     }
 
@@ -362,7 +363,7 @@
 
     async function loadHistory() {
       try {
-        const response = await fetch('/api/history');
+        const response = await fetch(`${API_URL}/history`);
         const data = await response.json();
 
         const list = document.getElementById('historyList');
