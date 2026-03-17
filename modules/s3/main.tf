@@ -50,14 +50,18 @@ resource "aws_s3_bucket_policy" "frontend" {
 }
 
 # Upload index.html to the bucket
+locals {
+  frontend_content = replace(
+    file("${path.root}/frontend/index.html"),
+    "__ALB_URL__",
+    "http://${var.alb_dns_name}"
+  )
+}
+
 resource "aws_s3_object" "index" {
   bucket       = aws_s3_bucket.frontend.id
   key          = "index.html"
-  content      = templatefile("${path.root}/frontend/index.html", {
-    alb_dns_name = "http://${var.alb_dns_name}"
-  })
+  content      = local.frontend_content
   content_type = "text/html"
-  etag = md5(templatefile("${path.root}/frontend/index.html", {
-    alb_dns_name = "http://${var.alb_dns_name}"
-  }))
+  etag         = md5(local.frontend_content)
 }

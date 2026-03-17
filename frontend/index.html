@@ -302,8 +302,7 @@
 
   <script>
     // ALB URL - Flask API endpoint
-    const API_URL = '${alb_dns_name}';
-
+    const API_URL = '__ALB_URL__';
     // On page load fetch search history
     window.onload = function() {
       loadHistory();
@@ -317,7 +316,7 @@
       hideErrorCard();
 
       try {
-        const response = await fetch(`${API_URL}/weather?city=${encodeURIComponent(city)}`);
+        const response = await fetch(`$${API_URL}/weather?city=$${encodeURIComponent(city)}`);
         const data = await response.json();
 
         if (!response.ok) {
@@ -374,14 +373,14 @@
         }
 
         list.innerHTML = data.searches.map(s => `
-          <div class="history-item" onclick="searchFromHistory('${s.city}')">
-            <div>
-              <div class="history-city">${s.city}</div>
-              <div class="history-detail">${s.condition_text} · ${s.searched_at.slice(0,16)}</div>
-            </div>
-            <div class="history-temp">${s.temperature}°C</div>
-          </div>
-        `).join('');
+  <div class="history-item" onclick="searchFromHistory('$${s.city}')">
+    <div>
+      <div class="history-city">$${s.city}</div>
+      <div class="history-detail">$${s.condition_text} · $${s.searched_at.slice(0,16)}</div>
+    </div>
+    <div class="history-temp">$${s.temperature}°C</div>
+  </div>
+`).join('');
 
       } catch (err) {
         document.getElementById('historyList').innerHTML =
