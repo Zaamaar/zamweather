@@ -302,7 +302,7 @@
 
   <script>
     // ALB URL - Flask API endpoint
-    const API_URL = 'http://zamweather-alb-212275771.us-east-1.elb.amazonaws.com';
+    const API_URL = '${alb_dns_name}';
 
     // On page load fetch search history
     window.onload = function() {

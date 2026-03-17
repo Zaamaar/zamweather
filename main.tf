@@ -64,6 +64,7 @@ module "ec2" {
 module "s3" {
   source       = "./modules/s3"
   project_name = var.project_name
+  alb_dns_name = module.alb.alb_dns_name
 }
 
 data "aws_instances" "app_servers" {

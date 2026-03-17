@@ -53,7 +53,11 @@ resource "aws_s3_bucket_policy" "frontend" {
 resource "aws_s3_object" "index" {
   bucket       = aws_s3_bucket.frontend.id
   key          = "index.html"
-  source       = "${path.root}/frontend/index.html"
+  content      = templatefile("${path.root}/frontend/index.html", {
+    alb_dns_name = "http://${var.alb_dns_name}"
+  })
   content_type = "text/html"
-  etag         = filemd5("${path.root}/frontend/index.html")
+  etag = md5(templatefile("${path.root}/frontend/index.html", {
+    alb_dns_name = "http://${var.alb_dns_name}"
+  }))
 }
