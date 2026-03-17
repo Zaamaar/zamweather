@@ -11,7 +11,7 @@ yum update -y
 yum install -y python3 python3-pip
 
 # Install Flask dependencies
-pip3 install flask mysql-connector-python requests urllib3==1.26.15
+pip3 install flask mysql-connector-python requests urllib3==1.26.15 flask-cors
 
 # Create app directory
 mkdir -p /home/ec2-user/app
@@ -45,6 +45,8 @@ import mysql.connector
 import os
 
 app = Flask(__name__)
+from flask_cors import CORS
+CORS(app)
 
 DB_HOST     = os.environ.get('DB_HOST')
 DB_USER     = os.environ.get('DB_USER')

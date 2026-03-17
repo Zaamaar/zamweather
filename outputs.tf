@@ -1,11 +1,11 @@
 output "alb_dns_name" {
-  description = "ALB URL - internal, use for direct API testing only"
+  description = "ALB URL - Flask API endpoint"
   value       = module.alb.alb_dns_name
 }
 
-output "cloudfront_url" {
-  description = "Public URL - share this with everyone"
-  value       = "https://${module.cloudfront.cloudfront_domain}"
+output "frontend_url" {
+  description = "Frontend URL - share this with everyone"
+  value       = "http://${module.s3.website_url}"
 }
 
 output "instance_public_ip" {

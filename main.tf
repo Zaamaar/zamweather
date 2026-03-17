@@ -4,8 +4,11 @@ terraform {
       source  = "hashicorp/aws"
       version = "~> 5.0"
     }
+    random = {
+      source  = "hashicorp/random"
+      version = "~> 3.0"
+    }
   }
-   
   required_version = ">= 1.0"
 }
 
@@ -61,15 +64,6 @@ module "ec2" {
 module "s3" {
   source       = "./modules/s3"
   project_name = var.project_name
-}
-
-module "cloudfront" {
-  source                 = "./modules/cloudfront"
-  project_name           = var.project_name
-  bucket_id              = module.s3.bucket_id
-  bucket_arn             = module.s3.bucket_arn
-  bucket_regional_domain = module.s3.bucket_regional_domain
-  alb_dns_name           = module.alb.alb_dns_name
 }
 
 data "aws_instances" "app_servers" {
