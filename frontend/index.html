@@ -316,7 +316,7 @@
       hideErrorCard();
 
       try {
-        const response = await fetch(`$${API_URL}/weather?city=$${encodeURIComponent(city)}`);
+        const response = await fetch(API_URL + '/weather?city=' + encodeURIComponent(city));
         const data = await response.json();
 
         if (!response.ok) {
@@ -362,7 +362,7 @@
 
     async function loadHistory() {
       try {
-        const response = await fetch(`${API_URL}/history`);
+        const response = await fetch(API_URL + '/history');
         const data = await response.json();
 
         const list = document.getElementById('historyList');
@@ -372,15 +372,15 @@
           return;
         }
 
-        list.innerHTML = data.searches.map(s => `
-  <div class="history-item" onclick="searchFromHistory('$${s.city}')">
-    <div>
-      <div class="history-city">$${s.city}</div>
-      <div class="history-detail">$${s.condition_text} · $${s.searched_at.slice(0,16)}</div>
-    </div>
-    <div class="history-temp">$${s.temperature}°C</div>
-  </div>
-`).join('');
+        list.innerHTML = data.searches.map(s =>
+  '<div class="history-item" onclick="searchFromHistory(\'' + s.city + '\')">' +
+    '<div>' +
+      '<div class="history-city">' + s.city + '</div>' +
+      '<div class="history-detail">' + s.condition_text + ' · ' + s.searched_at.slice(0,16) + '</div>' +
+    '</div>' +
+    '<div class="history-temp">' + s.temperature + '°C</div>' +
+  '</div>'
+).join('');
 
       } catch (err) {
         document.getElementById('historyList').innerHTML =
