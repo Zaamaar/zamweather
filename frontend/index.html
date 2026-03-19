@@ -302,7 +302,7 @@
 
   <script>
     // ALB URL - Flask API endpoint
-    const API_URL = '__ALB_URL__';
+    const API_URL = '';
     // On page load fetch search history
     window.onload = function() {
       loadHistory();
@@ -316,7 +316,7 @@
       hideErrorCard();
 
       try {
-        const response = await fetch(API_URL + '/weather?city=' + encodeURIComponent(city));
+        const response = await fetch('/api/weather?city=' + encodeURIComponent(city));
         const data = await response.json();
 
         if (!response.ok) {
@@ -362,7 +362,7 @@
 
     async function loadHistory() {
       try {
-        const response = await fetch(API_URL + '/history');
+        const response = await fetch('/api/history');
         const data = await response.json();
 
         const list = document.getElementById('historyList');
