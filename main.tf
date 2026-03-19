@@ -61,12 +61,6 @@ module "ec2" {
   api_key            = var.openweather_api_key
 }
 
-module "s3" {
-  source       = "./modules/s3"
-  project_name = var.project_name
-  alb_dns_name = module.alb.alb_dns_name
-}
-
 data "aws_instances" "app_servers" {
   instance_tags = {
     Name = "${var.project_name}-app-server"

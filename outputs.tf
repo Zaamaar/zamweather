@@ -4,8 +4,8 @@ output "alb_dns_name" {
 }
 
 output "frontend_url" {
-  description = "Frontend URL - share this with everyone"
-  value       = "http://${module.s3.website_url}"
+  description = "Frontend - hosted on Netlify"
+  value       = "https://zamweather.netlify.app/"
 }
 
 output "instance_public_ip" {
