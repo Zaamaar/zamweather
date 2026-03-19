@@ -188,6 +188,64 @@ def get_history():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@app.route('/forecast', methods=['GET'])
+def get_forecast():
+ city = request.args.get('city')
+    if not city:
+       return jsonify({"error": "City parameter is required"}), 400
+    try:
+        url = "https://api.openweathermap.org/data/2.5/forecast"
+        params = {"q": city, "appid": API_KEY, "units": "metric"}
+        try:
+            response = http_requests.get(url, params=params, timeout=10)
+        except http_requests.exceptions.Timeout:
+            return jsonify({"error": "timeout", "message": "Forecast service timed out"}), 503
+        except http_requests.exceptions.ConnectionError:
+            return jsonify({"error": "connection", "message": "Cannot reach forecast service"}), 503
+
+        if response.status_code != 200:
+            return jsonify({"error": "not_found", "message": "City not found"}), 404
+        data = response.json()
+        # Extract one reading every 24 hours for 5 days
+        # OpenWeatherMap returns data every 3 hours - we take every 8th entry
+        forecast = []
+        for i, item in enumerate(data['list']):
+            if i % 8 == 0:
+                forecast.append({
+                    "time": item['dt_txt'],
+                    "temperature": round(item['main']['temp'], 1),
+                    "condition": item['weather'][0]['description'].title()
+                })
+            if len(forecast) >= 5:
+                break
+        return jsonify({"city": data['city']['name'], "forecast": forecast}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/cityhistory', methods=['GET'])
+def get_city_history():
+    city = request.args.get('city')
+    if not city:
+        return jsonify({"error": "city parameter is required"}), 400
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute('''
+            SELECT temperature, searched_at
+            FROM searches
+            WHERE LOWER(city) = LOWER(%s)
+            ORDER BY searched_at DESC
+            LIMIT 14
+        ''', (city,))
+        history = cursor.fetchall()
+        cursor.close()
+        conn.close()
+        for item in history:
+            item['searched_at'] = str(item['searched_at'])
+        return jsonify({"city": city, "history": history}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=False)
 PYEOF

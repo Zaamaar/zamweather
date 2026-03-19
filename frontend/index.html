@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>ZamWeather</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     * {
       margin: 0;
@@ -177,6 +178,34 @@
       font-size: 0.85rem;
     }
 
+    .charts-section {
+      width: 100%;
+      max-width: 520px;
+      margin-bottom: 32px;
+      display: none;
+    }
+
+    .charts-section.visible {
+      display: block;
+    }
+
+    .chart-card {
+      background: rgba(255,255,255,0.07);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 20px;
+      padding: 24px;
+      margin-bottom: 20px;
+    }
+
+    .chart-title {
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: rgba(255,255,255,0.4);
+      margin-bottom: 16px;
+    }
+
     .history-section {
       width: 100%;
       max-width: 520px;
@@ -258,6 +287,7 @@
     <button onclick="searchWeather()">Search</button>
   </div>
 
+  <!-- Weather result card -->
   <div class="weather-card" id="weatherCard">
     <div class="city-name" id="cityName"></div>
     <div class="condition" id="conditionText"></div>
@@ -282,6 +312,7 @@
     </div>
   </div>
 
+  <!-- Error card -->
   <div class="error-card" id="errorCard">
     <div id="errorMessage"></div>
     <button class="retry-btn" id="retryBtn" onclick="searchWeather()" style="display:none">
@@ -289,6 +320,19 @@
     </button>
   </div>
 
+  <!-- Charts section -->
+  <div class="charts-section" id="chartsSection">
+    <div class="chart-card">
+      <div class="chart-title">5-Day Temperature Forecast</div>
+      <canvas id="forecastChart"></canvas>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Search History Temperature Trend</div>
+      <canvas id="historyChart"></canvas>
+    </div>
+  </div>
+
+  <!-- Recent searches -->
   <div class="history-section">
     <div class="history-title">Recent Searches</div>
     <div class="history-list" id="historyList">
@@ -297,12 +341,14 @@
   </div>
 
   <div class="footer">
-    Built on AWS — VPC · EC2 · RDS · ALB · S3 · Terraform
+    Built on AWS — VPC · EC2 · RDS · ALB · Terraform · Netlify
   </div>
 
   <script>
-    // ALB URL - Flask API endpoint
-    const API_URL = '';
+    // Chart instances stored so we can destroy before redrawing
+    let forecastChartInstance = null;
+    let historyChartInstance = null;
+
     // On page load fetch search history
     window.onload = function() {
       loadHistory();
@@ -314,6 +360,7 @@
 
       hideWeatherCard();
       hideErrorCard();
+      hideCharts();
 
       try {
         const response = await fetch('/api/weather?city=' + encodeURIComponent(city));
@@ -329,6 +376,7 @@
 
         showWeather(data);
         loadHistory();
+        loadCharts(city);
 
       } catch (err) {
         showError('Unable to reach the server. Please check your connection.', true);
@@ -336,12 +384,12 @@
     }
 
     function showWeather(data) {
-      document.getElementById('cityName').textContent = `${data.city}, ${data.country}`;
+      document.getElementById('cityName').textContent = data.city + ', ' + data.country;
       document.getElementById('conditionText').textContent = data.condition;
-      document.getElementById('tempDisplay').textContent = `${data.temperature}°C`;
-      document.getElementById('feelsLike').textContent = `${data.feels_like}°C`;
-      document.getElementById('humidity').textContent = `${data.humidity}%`;
-      document.getElementById('windSpeed').textContent = `${data.wind_speed} m/s`;
+      document.getElementById('tempDisplay').textContent = data.temperature + '°C';
+      document.getElementById('feelsLike').textContent = data.feels_like + '°C';
+      document.getElementById('humidity').textContent = data.humidity + '%';
+      document.getElementById('windSpeed').textContent = data.wind_speed + ' m/s';
       document.getElementById('country').textContent = data.country;
       document.getElementById('weatherCard').classList.add('visible');
     }
@@ -350,7 +398,11 @@
       document.getElementById('weatherCard').classList.remove('visible');
     }
 
-    function showError(message, showRetry = false) {
+    function hideCharts() {
+      document.getElementById('chartsSection').classList.remove('visible');
+    }
+
+    function showError(message, showRetry) {
       document.getElementById('errorMessage').textContent = message;
       document.getElementById('retryBtn').style.display = showRetry ? 'inline-block' : 'none';
       document.getElementById('errorCard').classList.add('visible');
@@ -364,7 +416,6 @@
       try {
         const response = await fetch('/api/history');
         const data = await response.json();
-
         const list = document.getElementById('historyList');
 
         if (!data.searches || data.searches.length === 0) {
@@ -373,14 +424,14 @@
         }
 
         list.innerHTML = data.searches.map(s =>
-  '<div class="history-item" onclick="searchFromHistory(\'' + s.city + '\')">' +
-    '<div>' +
-      '<div class="history-city">' + s.city + '</div>' +
-      '<div class="history-detail">' + s.condition_text + ' · ' + s.searched_at.slice(0,16) + '</div>' +
-    '</div>' +
-    '<div class="history-temp">' + s.temperature + '°C</div>' +
-  '</div>'
-).join('');
+          '<div class="history-item" onclick="searchFromHistory(\'' + s.city + '\')">' +
+            '<div>' +
+              '<div class="history-city">' + s.city + '</div>' +
+              '<div class="history-detail">' + s.condition_text + ' · ' + s.searched_at.slice(0, 16) + '</div>' +
+            '</div>' +
+            '<div class="history-temp">' + s.temperature + '°C</div>' +
+          '</div>'
+        ).join('');
 
       } catch (err) {
         document.getElementById('historyList').innerHTML =
@@ -391,6 +442,129 @@
     function searchFromHistory(city) {
       document.getElementById('cityInput').value = city;
       searchWeather();
+    }
+
+    async function loadCharts(city) {
+      await Promise.all([
+        loadForecastChart(city),
+        loadCityHistoryChart(city)
+      ]);
+      document.getElementById('chartsSection').classList.add('visible');
+    }
+
+    async function loadForecastChart(city) {
+      try {
+        const response = await fetch('/api/forecast?city=' + encodeURIComponent(city));
+        const data = await response.json();
+
+        if (!data.forecast || data.forecast.length === 0) return;
+
+        const labels = data.forecast.map(function(f) { return f.time.slice(0, 10); });
+        const temps = data.forecast.map(function(f) { return f.temperature; });
+
+        if (forecastChartInstance) {
+          forecastChartInstance.destroy();
+        }
+
+        const ctx = document.getElementById('forecastChart').getContext('2d');
+        forecastChartInstance = new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels: labels,
+            datasets: [{
+              label: 'Temperature (°C)',
+              data: temps,
+              borderColor: '#00c6ff',
+              backgroundColor: 'rgba(0, 198, 255, 0.1)',
+              borderWidth: 2,
+              pointBackgroundColor: '#00c6ff',
+              pointRadius: 5,
+              tension: 0.4,
+              fill: true
+            }]
+          },
+          options: {
+            responsive: true,
+            plugins: {
+              legend: {
+                labels: { color: 'rgba(255,255,255,0.6)', font: { size: 11 } }
+              }
+            },
+            scales: {
+              x: {
+                ticks: { color: 'rgba(255,255,255,0.5)', font: { size: 10 } },
+                grid: { color: 'rgba(255,255,255,0.05)' }
+              },
+              y: {
+                ticks: { color: 'rgba(255,255,255,0.5)', font: { size: 10 } },
+                grid: { color: 'rgba(255,255,255,0.05)' }
+              }
+            }
+          }
+        });
+      } catch (err) {
+        console.log('Forecast chart error:', err);
+      }
+    }
+
+    async function loadCityHistoryChart(city) {
+      try {
+        const response = await fetch('/api/cityhistory?city=' + encodeURIComponent(city));
+        const data = await response.json();
+
+        if (!data.history || data.history.length === 0) return;
+
+        const reversed = data.history.slice().reverse();
+        const labels = reversed.map(function(h) { return h.searched_at.slice(0, 16); });
+        const temps = reversed.map(function(h) { return h.temperature; });
+
+        if (historyChartInstance) {
+          historyChartInstance.destroy();
+        }
+
+        const ctx = document.getElementById('historyChart').getContext('2d');
+        historyChartInstance = new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels: labels,
+            datasets: [{
+              label: 'Temperature (°C)',
+              data: temps,
+              borderColor: '#0072ff',
+              backgroundColor: 'rgba(0, 114, 255, 0.1)',
+              borderWidth: 2,
+              pointBackgroundColor: '#0072ff',
+              pointRadius: 5,
+              tension: 0.4,
+              fill: true
+            }]
+          },
+          options: {
+            responsive: true,
+            plugins: {
+              legend: {
+                labels: { color: 'rgba(255,255,255,0.6)', font: { size: 11 } }
+              }
+            },
+            scales: {
+              x: {
+                ticks: {
+                  color: 'rgba(255,255,255,0.5)',
+                  font: { size: 9 },
+                  maxRotation: 45
+                },
+                grid: { color: 'rgba(255,255,255,0.05)' }
+              },
+              y: {
+                ticks: { color: 'rgba(255,255,255,0.5)', font: { size: 10 } },
+                grid: { color: 'rgba(255,255,255,0.05)' }
+              }
+            }
+          }
+        });
+      } catch (err) {
+        console.log('City history chart error:', err);
+      }
     }
   </script>
 
